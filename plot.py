@@ -10,19 +10,41 @@ import pyqtgraph as pg
 from pyqtgraph.ptime import time
 import graspr_client as gc
 
-BUFFER = np.zeros(200, 'f')
+BUFFER = np.zeros(120, 'f')
 BUFFER_STEP = 1
 
-BUFFER_TWO = np.zeros(200, 'f')
+BUFFER_TWO = np.zeros(120, 'f')
 
 app = QtGui.QApplication([])
 
-p = pg.plot() # Create a new window showing the data, returns PlotWindow (which has a PlotWidget inside)
-p.setWindowTitle('Graspr Probe Value')
-p.setRange(QtCore.QRectF(0, 0, 120, 40)) 
+def changeTitle():
+    print 'HELLO!'
+
+cb = QtGui.QCheckBox('Show title', self)
+cb.move(20, 20)
+cb.toggle()
+cb.stateChanged.connect(changeTitle)
+
+win = pg.GraphicsWindow(title="Basic plotting examples")
+win.resize(1000,600)
+win.setWindowTitle('pyqtgraph example: Plotting')
+# Enable antialiasing for prettier plots
+pg.setConfigOptions(antialias=True)
+
+p = win.addPlot(title="Graspr Probe1 Value") # Create a new window showing the data, returns PlotWindow (which has a PlotWidget inside)
+# p.setWindowTitle('Graspr Probe Value')
+p.setRange(QtCore.QRectF(0, 0, 120, 65536)) 
 p.setLabel('bottom', 'Index', units='B')
+
+p_two = win.addPlot(title='Graspr Probe2 Value')
+# p_two.setWindowTitle('Graspr Probe2 Value')
+p_two.setRange(QtCore.QRectF(0, 0, 120, 40)) 
+p_two.setLabel('bottom', 'Index', units='B')
+p_two.setTitle('Probe 2')
+
 curve = p.plot()
-curve_2 = p.plot()
+curve_2 = p_two.plot()
+
 curve.setPen('r', width=2, cosmetic=True)
 curve_2.setPen('g')
 
@@ -54,7 +76,7 @@ def update():
     else:
         s = np.clip(dt*3., 0, 1)
         fps = fps * (1-s) + (1.0/dt) * s
-    p.setTitle('%0.2f fps' % fps)
+    p.setTitle('Probe 1 :: %0.2f fps' % fps)
     app.processEvents()  ## force complete redraw for every plot
 
 timer = QtCore.QTimer()
