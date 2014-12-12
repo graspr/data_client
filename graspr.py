@@ -1,30 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-This example demonstrates a very basic use of flowcharts: filter data,
-displaying both the input and output of the filter. The behavior of
-he filter can be reprogrammed by the user.
-
-Basic steps are:
-  - create a flowchart and two plots
-  - input noisy data to the flowchart
-  - flowchart connects data to the first plot, where it is displayed
-  - add a gaussian filter to lowpass the data, then display it in the second plot.
+Draws Graspr Output
 """
-# import initExample ## Add path to library (just for examples; you do not need this)
-
-
-
-
 from pyqtgraph.flowchart import Flowchart
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 import pyqtgraph.metaarray as metaarray
-# import dataprocessingnode
 import graspr_client as gc
 from pyqtgraph.ptime import time
+# QtGui.QApplication.setGraphicsSystem('opengl')
 app = QtGui.QApplication([])
 
+
+######################################
+## INIT
 ## Create main window with grid layout
 win = QtGui.QMainWindow()
 win.setWindowTitle('pyqtgraph example: Flowchart')
@@ -32,14 +22,19 @@ cw = QtGui.QWidget()
 win.setCentralWidget(cw)
 layout = QtGui.QGridLayout()
 cw.setLayout(layout)
-
 controlsWidget = QtGui.QWidget()
 controlsLayout = QtGui.QBoxLayout(QtGui.QBoxLayout.TopToBottom)
 controlsWidget.setLayout(controlsLayout)
-
 layout.addWidget(controlsWidget, 1,0)
+######################################
 
+
+####################################
+#CONSTANTS
 spins = [
+    ("Red - Probe 14", None),
+    ("Green - Probe 15", None),
+    ("Blue - Probe 16", None),
     ("Finger", pg.SpinBox(value=5.0, bounds=[0, 5], step=1, minStep=1))
 ]
 
@@ -51,6 +46,8 @@ X_DATA = metaarray.MetaArray(X_DATA, info=[{'name': 'Time', 'values': np.linspac
 PROBE_IDX_1 = 14
 PROBE_IDX_2 = 15
 PROBE_IDX_3 = 16
+####################################
+
 
 ## Create flowchart, define input/output terminals
 fc = Flowchart(terminals={
@@ -68,39 +65,59 @@ w = fc.widget()
 ## Add two plot widgets
 pw1 = pg.PlotWidget()
 pw2 = pg.PlotWidget()
+
+
+
 layout.addWidget(pw1, 0, 1)
 layout.addWidget(pw2, 1, 1)
 
-def fingerChanged(changed):
-    global PROBE_IDX_1, PROBE_IDX_2, PROBE_IDX_3
-    val = int(changed.value() * 3) #3 probes per finger
-    PROBE_IDX_1 = val - 1
-    PROBE_IDX_2 = val
-    PROBE_IDX_3 = val + 1
-    print 'FINGER CHAAANGED, now using probes: %s, %s, %s' % (PROBE_IDX_1, PROBE_IDX_2, PROBE_IDX_3)
-
 ## Add Options
-text = spins[0][0]
-spin = spins[0][1]
+label = QtGui.QLabel(spins[0][0])
+labels.append(label)
+label = QtGui.QLabel(spins[1][0])
+labels.append(label)
+label = QtGui.QLabel(spins[2][0])
+labels.append(label)
+text = spins[3][0]
+spin = spins[3][1]
 label = QtGui.QLabel(text)
 labels.append(label)
+
 controlsLayout.addWidget(label)
 controlsLayout.addWidget(spin)
-spin.sigValueChanging.connect(fingerChanged)
 
 controlsLayout.addWidget(FPSLabel)
 
-win.show()
+#Set Input
+fc.setInput(x=X_DATA)
 
-## populate the flowchart with a basic set of processing nodes. 
-## (usually we let the user do this)
+########################################
+#Set up flowchart nodes
 pw1Node = fc.createNode('PlotWidget', pos=(150, 150))
 pw1Node.setPlot(pw1)
-pw1Node.recolor()
+pw2Node = fc.createNode('PlotWidget', pos=(300, -150))
+pw2Node.setPlot(pw2)
 
 curveNode1 = fc.createNode('PlotCurve', pos=(0, 0))
 curveNode2 = fc.createNode('PlotCurve', pos=(0, 150))
 curveNode3 = fc.createNode('PlotCurve', pos=(0, 300))
+curveNode4 = fc.createNode('PlotCurve', pos=(-450, 0))
+curveNode5 = fc.createNode('PlotCurve', pos=(-300, 150))
+curveNode6 = fc.createNode('PlotCurve', pos=(-150, 300))
+curveNode1.ctrls['color'].setColor((255,0,0))
+curveNode2.ctrls['color'].setColor((0,255,0))
+curveNode3.ctrls['color'].setColor((0,0,255))
+curveNode4.ctrls['color'].setColor((255,0,0))
+curveNode5.ctrls['color'].setColor((0,255,0))
+curveNode6.ctrls['color'].setColor((0,0,255))
+
+gauss1 = fc.createNode('GaussianFilter', pos=(150, -450))
+gauss2 = fc.createNode('GaussianFilter', pos=(150, -300))
+gauss3 = fc.createNode('GaussianFilter', pos=(150, -150))
+gauss1.ctrls['sigma'].setValue(5)
+gauss2.ctrls['sigma'].setValue(5)
+gauss3.ctrls['sigma'].setValue(5)
+
 fc.connectTerminals(fc['x'], curveNode1['x'])
 fc.connectTerminals(fc['x'], curveNode2['x'])
 fc.connectTerminals(fc['x'], curveNode3['x'])
@@ -110,26 +127,7 @@ fc.connectTerminals(fc['output3'], curveNode3['y'])
 fc.connectTerminals(curveNode1['plot'], pw1Node['In'])
 fc.connectTerminals(curveNode2['plot'], pw1Node['In'])
 fc.connectTerminals(curveNode3['plot'], pw1Node['In'])
-fc.setInput(x=X_DATA)
-curveNode1.ctrls['color'].setColor((255,0,0))
-curveNode2.ctrls['color'].setColor((0,255,0))
-curveNode3.ctrls['color'].setColor((0,0,255))
 
-pw2Node = fc.createNode('PlotWidget', pos=(300, -150))
-pw2Node.setPlot(pw2)
-
-gauss1 = fc.createNode('GaussianFilter', pos=(150, -450))
-gauss2 = fc.createNode('GaussianFilter', pos=(150, -300))
-gauss3 = fc.createNode('GaussianFilter', pos=(150, -150))
-curveNode4 = fc.createNode('PlotCurve', pos=(-450, 0))
-curveNode5 = fc.createNode('PlotCurve', pos=(-300, 150))
-curveNode6 = fc.createNode('PlotCurve', pos=(-150, 300))
-gauss1.ctrls['sigma'].setValue(5)
-gauss2.ctrls['sigma'].setValue(5)
-gauss3.ctrls['sigma'].setValue(5)
-curveNode4.ctrls['color'].setColor((255,0,0))
-curveNode5.ctrls['color'].setColor((0,255,0))
-curveNode6.ctrls['color'].setColor((0,0,255))
 fc.connectTerminals(fc['output1'], gauss1['In'])
 fc.connectTerminals(fc['output2'], gauss2['In'])
 fc.connectTerminals(fc['output3'], gauss3['In'])
@@ -142,8 +140,21 @@ fc.connectTerminals(gauss3['Out'], curveNode6['y'])
 fc.connectTerminals(curveNode4['plot'], pw2Node['In'])
 fc.connectTerminals(curveNode5['plot'], pw2Node['In'])
 fc.connectTerminals(curveNode6['plot'], pw2Node['In'])
+###############################
+
+win.show()
 
 
+def fingerChanged(changed):
+    global PROBE_IDX_1, PROBE_IDX_2, PROBE_IDX_3
+    val = int(changed.value() * 3) #3 probes per finger
+    PROBE_IDX_1 = val - 1
+    PROBE_IDX_2 = val
+    PROBE_IDX_3 = val + 1
+    print 'FINGER CHAAANGED, now using probes: %s, %s, %s' % (PROBE_IDX_1, PROBE_IDX_2, PROBE_IDX_3)
+
+
+spin.sigValueChanging.connect(fingerChanged)
 
 
 lastTime = time()
@@ -176,7 +187,6 @@ def update():
     fc.setInput(output3=data3)
     _fps()
     
-
 
 timer = QtCore.QTimer()
 timer.timeout.connect(update)
