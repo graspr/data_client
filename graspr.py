@@ -9,6 +9,7 @@ import numpy as np
 import pyqtgraph.metaarray as metaarray
 import graspr_client as gc
 from pyqtgraph.ptime import time
+import deal_with_args
 # QtGui.QApplication.setGraphicsSystem('opengl')
 app = QtGui.QApplication([])
 
@@ -43,8 +44,8 @@ FPSLabel = QtGui.QLabel("FPS:");
 DATA_LENGTH = 120
 X_DATA = range(0,DATA_LENGTH)
 X_DATA = metaarray.MetaArray(X_DATA, info=[{'name': 'Time', 'values': np.linspace(0, 1.0, len(X_DATA))}, {}])
-PROBE_IDX_1 = 14
-PROBE_IDX_2 = 15
+PROBE_IDX_1 = 8
+PROBE_IDX_2 = 12
 PROBE_IDX_3 = 16
 ####################################
 
@@ -195,6 +196,6 @@ timer.start(0)
 ## Start Qt event loop unless running in interactive mode or using pyside.
 if __name__ == '__main__':
     import sys
-    gc.setup_socket()
+    gc.setup_socket(PORT=input_args.port[0], fake_data=input_args.fake_data)
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
         QtGui.QApplication.instance().exec_()

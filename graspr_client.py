@@ -4,11 +4,13 @@ import socket
 import sys
 from thread import start_new_thread
 import numpy as np
+import time
+import deal_with_args
 
 sock = None
 
 SOCK_HOST = 'graspr'
-SOCK_PORT = 8081
+SOCK_PORT = 8087
 SOCK_BACKLOG = 3
 
 BUFFER_STEP = 1
@@ -33,10 +35,13 @@ BUFFERS = {
 
 CURRENT_VAL = None
 
-EXPECTED_MESSAGE_LENGTH = 272 #expect 16vals * 16 bits + 15commas +\n = 272
+EXPECTED_MESSAGE_LENGTH = 95 #expect 16vals * 16 bits + 15commas +\n = 272
 msg_raw = ''
 
-def setup_socket(PORT=None):
+def setup_socket(PORT=None, fake_data=False):
+    if fake_data:
+        return start_new_thread(read_forever, (True,))
+
     global sock
     # Create a TCP/IP socket
     try:
@@ -60,19 +65,43 @@ def setup_socket(PORT=None):
     print('Starting read Thread')
     start_new_thread(read_forever, ())
 
-def read_forever():
+def read_forever(fake_data=False):
     print('Reading values forever')
-    while True:
-        read()
 
+    #Seperate while loops so we don't check the if statement every time.
+    if fake_data:
+        read_fake() #this has a for loop inside of it.
+    else:
+        while True:
+            read()
+
+def read_fake():
+    # print 'DOING FAKE DATA'
+    NUM_VALUES = 100
+    data = np.linspace(0, 2*np.pi, num=NUM_VALUES)
+    data = np.sin(data)
+    data *= (65535/2)
+    data += (65535/2)
+    data = map(lambda val: int(val), data)
+    i = 0;
+    while True:
+        if i>= NUM_VALUES:
+            i = 1 #1 instead of 0 to take out the kink
+        update = [data[i] for x in range(1,17)]
+        # print 'THIS IS THE UPDATE: %s' % update
+        update_buffers(update)
+        i = i + 1
+        time.sleep(0.02) #~60 fps
 
 def read():
     global sock, msg_raw, CURRENT_VAL
-    msg_raw += sock.recv(4096)
+    msg_raw += sock.recv(EXPECTED_MESSAGE_LENGTH)
+
     msg_len = len(msg_raw) 
-    # .split(',') #get 16 values
     while msg_len < EXPECTED_MESSAGE_LENGTH:
-        msg_raw += sock.recv(4096)
+        recv = sock.recv(120)
+        msg_raw += recv
+        msg_len += len(recv)
 
     msg_parts = msg_raw.split('\n')
     data = msg_parts[0]
@@ -82,9 +111,9 @@ def read():
         msg_raw = '' #start fresh
 
     data = data.split(',')
-    data = map(lambda val: int(val,2), data)
-    CURRENT_VAL = data
-    update_buffers(CURRENT_VAL)
+    # print 'PRE_PROCESSED DATA: %s' % data
+    data = map(lambda val: int(val), data)
+    update_buffers(data)
     return data
 
 def moving_average(iterable, n=3):
@@ -100,6 +129,8 @@ def moving_average(iterable, n=3):
         yield s / float(n)
 
 def update_buffers(data):
+    global CURRENT_VAL
+    CURRENT_VAL = data
     for i in range(1,17):
         val = data[i-1]
         BUFFER = BUFFERS[i]
@@ -113,7 +144,8 @@ def get_buffer(probe_num):
 
 
 if __name__ == '__main__':
-    setup_socket()
+    input_args = deal_with_args.get_results()
+    setup_socket(PORT=input_args.port[0], fake_data=input_args.fake_data)
     while True:
         print get_buffer(15)
     
